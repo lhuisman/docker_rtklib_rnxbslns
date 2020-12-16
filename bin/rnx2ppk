@@ -1,0 +1,39 @@
+#!/bin/bash
+
+nowMinutes=$(date -u -d "$1 minutes ago" +%M)
+if [ $nowMinutes -gt 00 ] && [ $nowMinutes -lt 15 ]
+then
+  firstMinute=00
+  lastMinute=14
+elif [ $nowMinutes -ge 15 ] && [ $nowMinutes -lt 30 ]
+then
+  firstMinute=15
+  lastMinute=29
+elif [ $nowMinutes -ge 30 ] && [ $nowMinutes -lt 45 ]
+then
+  firstMinute=30
+  lastMinute=44
+elif [ $nowMinutes -ge 45 ] && [ $nowMinutes -lt 60 ]
+then
+  firstMinute=45
+  lastMinute=59
+else
+  ecHO "something wrong..."
+fi
+ts=$(date -u -d "$1 minutes ago"  "+%Y/%m/%d %H:")$firstMinute":00"
+te=$(date -u -d "$1 minutes ago"  "+%Y/%m/%d %H:")$lastMinute":59"
+
+yyyy=$(date -u -d "$1 minutes ago"  "+%Y")
+doy=$(date -u -d "$1 minutes ago"  "+%j")
+hr=$(date -u -d "$1 minutes ago"  "+%H")
+
+mkdir -p /data/pos/
+mkdir -p /tmp/
+
+cd /tmp
+
+rnxbslns -k /root/conf/procshort.opt -rov ADR2 -base APEL -dtype KAD_ROV_15M -dtype KAD_BASE_15M -dtype BRDC_IGS_S -lstfile /root/conf/downloadpaths.lst -ts $ts -te $te  -o /data/pos/%r%b%Y%n%h%M.pos /var/log/supervisor/cron.log 2>&1
+
+perl -I /root/bin/ /root/bin/pos2postgresql.pl -r ADR2 -b APEL -y $yyyy -d $doy -f /data/pos -h $hr -m $firstMinute -p 192.168.1.180
+
+rm -rf /data

@@ -1,0 +1,8 @@
+IGS        ftp://igs.bkg.bund.de/IGS/BRDC/%Y/%n/BRDC00WRD_S_%Y%n0000_01D_MN.rnx.gz                            /data/
+KAD_ROV_15M    http://gnss-data.kadaster.nl/root/data/highrate/%Y/%n/%r00NLD_S_%Y%n%h%M_15M_01S_MO.crx.gz       /data/
+KAD_BASE_15M   ftp://gnss-data.kadaster.nl/root/data/highrate/%Y/%n/%b00NLD_S_%Y%n%h%M_15M_01S_MO.crx.gz       /data/
+KAD_ROV_01D    http://gnss-data.kadaster.nl/root/data/daily/%Y/%n/%r00NLD_R_%Y%n%h%M_01D_30S_MO.crx.gz       /data/
+KAD_BASE_01D   ftp://gnss-data.kadaster.nl/root/data/daily/%Y/%n/%b00NLD_R_%Y%n%h%M_01D_30S_MO.crx.gz       /data/
+BRDC_IGS_S        ftp://igs.bkg.bund.de/IGS/BRDC/%Y/%n/BRDC00WRD_S_%Y%n0000_01D_MN.rnx.gz                            /data/
+BRDC_IGS_R        ftp://igs.bkg.bund.de/IGS/BRDC/%Y/%n/BRDC00WRD_R_%Y%n0000_01D_MN.rnx.gz                            /data/
+TUD_BASE_01D   http://gnss1.tudelft.nl/dpga/rinex/%Y/%n/%b00NLD_R_%Y%n%h%M_01D_30S_MO.crx.gz       /data/
