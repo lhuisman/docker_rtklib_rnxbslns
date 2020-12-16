@@ -36,7 +36,7 @@ RUN cd /root/src/rtklib/app/rnxbslns/gcc \
 
   
 # Copy and compile rnxcmp
-COPY RNXCMP_4.0.8_src/source/ /root/src/rnxcmp
+COPY rnxcmp/source/ /root/src/rnxcmp
 RUN cd /root/src/rnxcmp \
   && gcc -ansi -O2 -static rnx2crx.c -o RNX2CRX \
   && gcc -ansi -O2 -static crx2rnx.c -o CRX2RNX \
