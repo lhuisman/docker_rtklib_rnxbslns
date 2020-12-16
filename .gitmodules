@@ -1,0 +1,6 @@
+[submodule "myRTKLIB"]
+	path = myRTKLIB
+	url = https://github.com/lhuisman/myRTKLIB/
+[submodule "rnxcmp"]
+	path = rnxcmp
+	url = https://github.com/lhuisman/rnxcmp/
