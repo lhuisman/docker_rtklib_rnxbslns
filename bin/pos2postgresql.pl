@@ -51,14 +51,79 @@ sub usage{
         Incorrect input
         
         Usage:
-        pos2postgresql -b <base> -r <rover> -y <year> -d <day of year> -h <hour> -m <min>  -f <path to pos file> -p <postgresql ip>
+        pos2postgresql -b <base>|<file.ext> -r <rover>|<file.ext> -y <year> -d <day of year> -h <hour> -m <min>  -f <path to pos file> -p <postgresql ip>
         
         Example:
-        perl /root/bin/pos2postgresql.pl -f /data/pos/2020/261/09/ -b ADR2 -r APEL -y 2020 -d 261 -h 09 -m 10 
+        perl /root/bin/pos2postgresql.pl -f /data/pos/2020/261/09/ -b ADR2 -r rovers.lst -y 2020 -d 261 -h 09 -m 10 
         
 END_MESSAGE
  
     print $message;
+}
+
+sub ltrim { my $s = shift; $s =~ s/^\s+//;       return $s };
+sub rtrim { my $s = shift; $s =~ s/\s+$//;       return $s };
+sub  trim { my $s = shift; $s =~ s/^\s+|\s+$//g; return $s };
+
+sub readStationFile{
+
+  # Read file with station names
+  #
+  # Syntax:
+  #      (@stations) =  readStationFile($stationfile);
+  #
+  # $stationfile         station file name
+  #
+  # Lennard Huisman - GEOpinie 17-12-2020
+  # 
+
+  my ($stationfile) = @_;
+  my (@stations);
+  
+  open(STAFILE,"$stationfile") ||  die ("Error opening $stationfile\n");
+  
+  while (<STAFILE>) {
+    chop($_);
+    $_=rtrim($_);
+    if ($_ =~ /^\s*%/) { next; } # Skips comment line starting with %
+    if ($_ =~ /^\s*#/) { next; } # Skips comment line starting with %
+    push(@stations, $_);
+  } # End of While
+  close (STAFILE);
+  
+  return (@stations);
+
+}
+
+sub getPosStats {
+    my ($nfixepochs, @posdata) = @_;
+    
+    my (@x, @y, @z);
+    for (0..$nfixepochs-1) {
+        push(@x,$posdata[$_][1]);
+        push(@y,$posdata[$_][2]);
+        push(@z,$posdata[$_][3]);
+    }
+    my $vecX=vector(@x);
+    my $vecY=vector(@y);
+    my $vecZ=vector(@z);
+
+    my $x_mean=mean($vecX);
+    my $y_mean=mean($vecY);
+    my $z_mean=mean($vecZ);
+    
+    my $x_median=median($vecX);
+    my $y_median=median($vecY);
+    my $z_median=median($vecZ);
+    
+    my $x_stddev=stddev($vecX);
+    my $y_stddev=stddev($vecY);
+    my $z_stddev=stddev($vecZ);
+    
+    my ($phi,$lam,$u)=xyz2plh($x_median,$y_median,$z_median);
+    my ($n_stddev, $e_stddev, $u_stddev) = stdxyz2neu($x_stddev, $y_stddev, $z_stddev,$phi,$lam,$u);
+
+    return ($x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev);
 }
 
 sub readPos{
@@ -106,37 +171,6 @@ sub readPos{
 
 }
 
-sub getPosStats {
-    my ($nfixepochs, @posdata) = @_;
-    
-    my (@x, @y, @z);
-    for (0..$nfixepochs-1) {
-        push(@x,$posdata[$_][1]);
-        push(@y,$posdata[$_][2]);
-        push(@z,$posdata[$_][3]);
-    }
-    my $vecX=vector(@x);
-    my $vecY=vector(@y);
-    my $vecZ=vector(@z);
-
-    my $x_mean=mean($vecX);
-    my $y_mean=mean($vecY);
-    my $z_mean=mean($vecZ);
-    
-    my $x_median=median($vecX);
-    my $y_median=median($vecY);
-    my $z_median=median($vecZ);
-    
-    my $x_stddev=stddev($vecX);
-    my $y_stddev=stddev($vecY);
-    my $z_stddev=stddev($vecZ);
-    
-    my ($phi,$lam,$u)=xyz2plh($x_median,$y_median,$z_median);
-    my ($n_stddev, $e_stddev, $u_stddev) = stdxyz2neu($x_stddev, $y_stddev, $z_stddev,$phi,$lam,$u);
-
-    return ($x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev);
-}
-
 sub send2DB{
     my ($data,$database)=@_;
 
@@ -167,10 +201,10 @@ sub send2DB{
     $dbh->disconnect();
 }
 
-my ($base, $rover, $yyyy, $doy, $hour, $min, $filepath, $database);
+my ($baseinfo, $roverinfo, $yyyy, $doy, $hour, $min, $filepath, $database, @bases, @rovers, $base, $rover);
 
-GetOptions( 'base=s'  => \$base,
-            'rover=s'  => \$rover,
+GetOptions( 'base=s'  => \$baseinfo,
+            'rover=s'  => \$roverinfo,
             'yyyy=s'      => \$yyyy,
             'doy=s'       => \$doy,
             'hour=s'      => \$hour,
@@ -180,21 +214,38 @@ GetOptions( 'base=s'  => \$base,
           )
     or usage(); 
 
-my $posfile=$filepath."/".$rover.$base.$yyyy.$doy.$hour.$min.".pos";
-my $sessionepoch=$yyyy."-".$doy." ".$hour.":".$min;
+if (index($baseinfo, '.') != -1) {
+    # input was a file
+    @bases = readStationFile($baseinfo);
+} else {
+    @bases[0]=$baseinfo;
+}
+if (index($roverinfo, '.') != -1) {
+    # input was a file
+    @rovers = readStationFile($roverinfo);
+} else {
+    @rovers[0]=$roverinfo;
+}
 
-my ($nfixepochs, $nepochs,@posdata) = readPos($posfile);
+foreach $base (@bases) {
+    foreach $rover (@rovers) {
+        my $posfile=$filepath."/".$rover.$base.$yyyy.$doy.$hour.$min.".pos";
+        my $sessionepoch=$yyyy."-".$doy." ".$hour.":".$min;
 
-print "\n";
-print "Inputfile $posfile for rover $rover and base $base read with $nfixepochs fixed epochs out of $nepochs epochs\n";
-print "\n";
+        my ($nfixepochs, $nepochs,@posdata) = readPos($posfile);
 
-my ($x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev) = getPosStats($nfixepochs, @posdata);
-print "\n";
-printf ("Statistics: Mean X, Y Z: %.4f  %.4f  %.4f  and StdNEU: %.4f %.4f %.4f \n",$x_mean, $y_mean, $z_mean,$n_stddev, $e_stddev, $u_stddev);
-print "\n";
+        print "\n";
+        print "Inputfile $posfile for rover $rover and base $base read with $nfixepochs fixed epochs out of $nepochs epochs\n";
+        print "\n";
 
-my $dbdata=sprintf("$sessionepoch,$base,$rover,$nepochs,$nfixepochs,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f",$x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev);
-$dbdata =~ s/n\/a/NaN/g;
-send2DB($dbdata,$database);
+        my ($x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev) = getPosStats($nfixepochs, @posdata);
+        print "\n";
+        printf ("Statistics: Mean X, Y Z: %.4f  %.4f  %.4f  and StdNEU: %.4f %.4f %.4f \n",$x_mean, $y_mean, $z_mean,$n_stddev, $e_stddev, $u_stddev);
+        print "\n";
+
+        my $dbdata=sprintf("$sessionepoch,$base,$rover,$nepochs,$nfixepochs,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f",$x_median,$y_median,$z_median,$x_mean,$y_mean,$z_mean,$x_stddev,$y_stddev,$z_stddev,$n_stddev,$e_stddev,$u_stddev);
+        $dbdata =~ s/n\/a/NaN/g;
+        send2DB($dbdata,$database);
+    }
+}
 

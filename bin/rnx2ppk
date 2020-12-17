@@ -32,8 +32,8 @@ mkdir -p /tmp/
 
 cd /tmp
 
-rnxbslns -k /root/conf/procshort.opt -rov ADR2 -base APEL -dtype KAD_ROV_15M -dtype KAD_BASE_15M -dtype BRDC_IGS_S -lstfile /root/conf/downloadpaths.lst -ts $ts -te $te  -o /data/pos/%r%b%Y%n%h%M.pos /var/log/supervisor/cron.log 2>&1
+rnxbslns -k /root/conf/procshort.opt -rovfile /root/conf/rovers.lst -basefile /root/conf/bases.lst -dtype KAD_ROV_15M -dtype TUD_ROV_15M -dtype KAD_BASE_15M -dtype BRDC_IGS_S -lstfile /root/conf/downloadpaths.lst -ts $ts -te $te  -o /data/pos/%r%b%Y%n%h%M.pos /var/log/supervisor/cron.log 2>&1
 
-perl -I /root/bin/ /root/bin/pos2postgresql.pl -r ADR2 -b APEL -y $yyyy -d $doy -f /data/pos -h $hr -m $firstMinute -p 192.168.1.180
+perl -I /root/bin/ /root/bin/pos2postgresql.pl -r /root/conf/rovers.lst -b /root/conf/bases.lst -y $yyyy -d $doy -f /data/pos -h $hr -m $firstMinute -p 192.168.1.180
 
 rm -rf /data
