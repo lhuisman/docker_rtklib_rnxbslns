@@ -18,7 +18,7 @@ then
   firstMinute=45
   lastMinute=59
 else
-  ecHO "something wrong..."
+  echo "something wrong..."
 fi
 ts=$(date -u -d "$1 minutes ago"  "+%Y/%m/%d %H:")$firstMinute":00"
 te=$(date -u -d "$1 minutes ago"  "+%Y/%m/%d %H:")$lastMinute":59"
